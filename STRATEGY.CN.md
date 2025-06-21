@@ -300,3 +300,56 @@ Position.SourceType = "local" or "api" // 数据来源，只有 local 才有 Cre
 ```
 BasicTrend = 0.3
 ```
+
+##### 基于这个写作规范的策略
+技术指标参数：
+MA：
+名称： ma_5m_14 ，K线类型： 5m ，周期： 14 ，启用： true
+Rsi：
+名称： rsi_4h_14 ，K线类型： 4h ，周期： 14 ，启用： true
+名称： rsi_1d_14 ，K线类型： 1d ，周期： 14 ，启用： true
+boll:
+名称： boll_1h_144_5 ，K线类型： 1h ，周期： 144 ，带宽：0.5，启用： true
+名称： boll_1h_144_8 ，K线类型： 1h ，周期： 144 ，带宽：0.85，启用： true
+kc：
+名称：kc_4h_50_2 ，K线类型： 4h ，周期： 50 ，多元：2.75，启用： true
+名称：kc_4h_50_3 ，K线类型： 4h ，周期： 50 ，多元：3.75，启用： true
+
+Atr
+名称： atr_1h_5 ，K线类型： 1h ，周期： 5 ，启用： true
+
+
+执行策略：
+做多策略：
+// 12个k线内最低价跌破过宽通道中轨，然后最新价格刚反弹突破窄通道中轨
+let rule1 = any((2..12), kline_4h.Low[#] < kc_4h_50_3.Mid[#]) && kline_4h.Close[1] < kc_4h_50_2.Mid[1] && kline_4h.Close[0] > kc_4h_50_2.Mid[0];
+
+// 放量上涨
+let rule2 = kline_4h.Qps[0] > kline_4h.Qps[1];
+
+rule1 && rule2
+
+平多策略：
+// 盈利率 > 10%
+let rule1 = ROI >= 10;
+
+// 当前价格 < 上个k线的收盘价
+let rule2 = kline_5m.Close[0] < kline_5m.Close[1];
+
+
+rule1 && rule2
+
+
+平多策略：
+// 当前标记价格 < 买入价格 - 3 * atr, 进行止损
+let rule1 = float(Position.MarkPrice) < float(Position.EntryPrice) - atr_1h_5.Data[0] * 3;
+
+// boll 宽度
+let bbw = (boll_1h_144_8.High[0] - boll_1h_144_8.Low[0]) / boll_1h_144_8.Mid[0] * 100;
+
+// 之前价格在bool0.5上面，当前价格 < bool0.5 的上轨，boll0.85宽度 >= 3, 进行止损
+let rule2 = kline_1h.Close[0] < boll_1h_144_5.High[0] && bbw >= 3;
+
+
+rule1 || rule2
+
