@@ -91,7 +91,7 @@ func (pusher DingDing) TestPusher() {
 ## Test
 #### push test success
 
-> author <sorry510sf@gmail.com>`
+> author <lessl@vip.qq.com>`
   DingDingApi(text)
 }
 
@@ -107,7 +107,7 @@ func (pusher DingDing) FuturesOpenOrder(params FuturesOrderParams) {
 #### **{futures.error}**：<font color="#FF0000">%s</font>
 #### **{futures.time}**：%s
 
-> author <sorry510sf@gmail.com>`
+> author <lessl@vip.qq.com>`
 
 	text = fmt.Sprintf(lang.LangMatch(text),
 		params.Symbol + params.Title,
@@ -137,7 +137,7 @@ func (pusher DingDing) FuturesCloseOrder(params FuturesOrderParams) {
 #### **{futures.error}**：<font color="#FF0000">%s</font>
 #### **{futures.time}**：%s
 
-> author <sorry510sf@gmail.com>`
+> author <lessl@vip.qq.com>`
 
 	text = fmt.Sprintf(lang.LangMatch(text),
 		params.Symbol + params.Title,
@@ -164,7 +164,7 @@ func (pusher DingDing) FuturesNotice(params FuturesNoticeParams) {
 #### **{futures.auto_order}**：<font color="#008000">%s</font>
 #### **{futures.time}**：%s
 
-> author <sorry510sf@gmail.com>`
+> author <lessl@vip.qq.com>`
 
   text = fmt.Sprintf(lang.LangMatch(text),
     params.Symbol + params.Title,
@@ -185,7 +185,7 @@ func (pusher DingDing) FuturesListenKlineBase(params FuturesListenParams) {
 #### **{futures.remarks}**：<font color="#008000">%s</font>
 #### **{futures.time}**：%s
 
-> author <sorry510sf@gmail.com>`
+> author <lessl@vip.qq.com>`
 
   text = fmt.Sprintf(lang.LangMatch(text),
     params.Symbol + params.Title,
@@ -208,7 +208,7 @@ func (pusher DingDing) FuturesListenKlineKc(params FuturesListenParams) {
 #### **{futures.desired_price}**：<font color="#008000">%f</font>
 #### **{futures.time}**：%s
 
-> author <sorry510sf@gmail.com>`
+> author <lessl@vip.qq.com>`
 
   text = fmt.Sprintf(lang.LangMatch(text),
     params.Symbol + params.Title,
@@ -233,7 +233,7 @@ func (pusher DingDing) FuturesListenKlineCustom(params FuturesListenParams) {
 
 > <font color="#008000">%s</font>
 
-> author <sorry510sf@gmail.com>`
+> author <lessl@vip.qq.com>`
 
   text = fmt.Sprintf(lang.LangMatch(text),
     params.Symbol + params.Title,
@@ -255,7 +255,7 @@ func (pusher DingDing) FuturesListenFundingRate(params FuturesListenParams) {
 #### **{futures.remarks}**：<font color="#008000">%s</font>
 #### **{futures.time}**：%s
 
-> author <sorry510sf@gmail.com>`
+> author <lessl@vip.qq.com>`
 
   text = fmt.Sprintf(lang.LangMatch(text),
     params.Symbol + params.Title,
@@ -279,7 +279,7 @@ func (pusher DingDing) SpotOrder(params SpotOrderParams) {
 #### **{spot.error}**：<font color="#FF0000">%s</font>
 #### **{spot.time}**：%s
 
-> author <sorry510sf@gmail.com>`
+> author <lessl@vip.qq.com>`
   text = fmt.Sprintf(lang.LangMatch(text),
     params.Symbol + params.Title,
     lang.Lang("spot." + params.Side),
@@ -301,7 +301,7 @@ func (pusher DingDing) SpotNotice(params SpotNoticeParams) {
 #### **{spot.auto_order}**：<font color="#008000">%s</font>
 #### **{spot.time}**：%s
 
-> author <sorry510sf@gmail.com>`
+> author <lessl@vip.qq.com>`
 
   text = fmt.Sprintf(lang.LangMatch(text),
     params.Symbol + params.Title,
@@ -321,7 +321,7 @@ func (pusher DingDing) SpotListenKlineBase(params SpotListenParams) {
 #### **{spot.remarks}**：<font color="#008000">%s</font>
 #### **{spot.time}**：%s
 
-> author <sorry510sf@gmail.com>`
+> author <lessl@vip.qq.com>`
 
   text = fmt.Sprintf(lang.LangMatch(text),
     params.Symbol + params.Title,
@@ -348,7 +348,7 @@ func (pusher DingDing) FuturesCustomStrategyTest(params FuturesTestParams) {
 
 > <font color="#008000">%s</font>
 
-> author <sorry510sf@gmail.com>`
+> author <lessl@vip.qq.com>`
 
   text = fmt.Sprintf(lang.LangMatch(text),
     params.Symbol + params.Title,
@@ -376,7 +376,7 @@ func (pusher DingDing) FuturesPositionConvert(params FuturesPositionConvertParam
 #### **{futures.profit}**：<font color="#008000">%s</font>
 #### **{futures.time}**：%s
 
-> author <sorry510sf@gmail.com>`
+> author <lessl@vip.qq.com>`
 
   text = fmt.Sprintf(lang.LangMatch(text),
     params.Symbol + params.Title,
