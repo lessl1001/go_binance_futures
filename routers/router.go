@@ -63,6 +63,15 @@ func init() {
 	web.Router("/strategy-templates", &controllers.StrategyTemplateController{}, "get:Get;post:Post") // 策略模板
 	web.Router("/strategy-templates/:id", &controllers.StrategyTemplateController{}, "delete:Delete;put:Edit") // 策略模板更新
 	web.Router("/strategy-templates/test/:symbol", &controllers.StrategyTemplateController{}, "post:TestStrategyRule") // 测试策略规则
+
+	// AI驱动量化策略参数优化相关API
+	web.Router("/api/backtest", &controllers.BacktestController{}, "get:Get;post:Post") // 回测任务列表和创建
+	web.Router("/api/backtest/:taskId", &controllers.BacktestController{}, "delete:Delete") // 删除回测任务
+	web.Router("/api/backtest/:taskId/results", &controllers.BacktestController{}, "get:GetResults") // 获取回测结果
+	
+	web.Router("/api/deploy_strategy", &controllers.DeployStrategyController{}, "get:Get;post:Post") // 部署策略列表和创建
+	web.Router("/api/deploy_strategy/:strategyId", &controllers.DeployStrategyController{}, "put:Put;delete:Delete") // 更新和删除策略
+	web.Router("/api/operation_logs", &controllers.DeployStrategyController{}, "get:GetOperationLogs") // 操作日志
 	
 	web.Router("/start", &controllers.CommandController{}, "post:Start") // start
 	web.Router("/stop", &controllers.CommandController{}, "post:Stop") // stop

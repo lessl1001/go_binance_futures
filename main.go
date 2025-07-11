@@ -23,7 +23,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var dbVersion int64 = 6 // 每次变动数据库版本号 +1
+var dbVersion int64 = 7 // 每次变动数据库版本号 +1
 var debug, _ = config.String("debug")
 var webPort, _ = config.String("web::port")
 var webIndex, _ = config.String("web::index")
@@ -81,6 +81,10 @@ func registerModels() {
 	orm.RegisterModel(new(models.DeliverySymbols))
 	orm.RegisterModel(new(models.FuturesPosition))
 	orm.RegisterModel(new(models.FuturesOrder))
+	orm.RegisterModel(new(models.BacktestTask))
+	orm.RegisterModel(new(models.BacktestResult))
+	orm.RegisterModel(new(models.DeployedStrategy))
+	orm.RegisterModel(new(models.OperationLog))
 	
 	setDriver(driver) // 设置数据库驱动
 	syncDb() // 同步数据库
@@ -116,6 +120,9 @@ func syncDb() {
 func registerMiddlewares() {
     web.InsertFilter("*", web.BeforeRouter, middlewares.CorsMiddleware)
     web.InsertFilter("*", web.BeforeRouter, middlewares.JwtMiddleware)
+    web.InsertFilter("/api/*", web.BeforeRouter, middlewares.APILoggingMiddleware)
+    web.InsertFilter("/api/*", web.BeforeRouter, middlewares.PermissionMiddleware)
+    web.InsertFilter("/api/*", web.BeforeRouter, middlewares.RateLimitMiddleware)
 }
 
 func updateSystemConfig() {

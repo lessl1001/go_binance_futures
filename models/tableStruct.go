@@ -257,3 +257,100 @@ func (u *StrategyTemplates) TableName() string {
 func (u *TestStrategyResults) TableName() string {
     return "test_strategy_results"
 }
+
+// AI量化策略参数优化回测任务
+type BacktestTask struct {
+	ID int64 `orm:"column(id)" json:"id"`
+	TaskID string `orm:"column(task_id)" json:"task_id"` // 优化任务ID
+	Name string `orm:"column(name)" json:"name"` // 任务名称
+	Status string `orm:"column(status)" json:"status"` // 任务状态: pending, running, completed, failed
+	Strategy string `orm:"column(strategy);type(text)" json:"strategy"` // 策略表达式
+	Parameters string `orm:"column(parameters);type(text)" json:"parameters"` // 参数组合 JSON
+	Symbol string `orm:"column(symbol)" json:"symbol"` // 测试币种
+	StartTime int64 `orm:"column(start_time)" json:"start_time"` // 回测开始时间
+	EndTime int64 `orm:"column(end_time)" json:"end_time"` // 回测结束时间
+	CreatedBy string `orm:"column(created_by)" json:"created_by"` // 创建者
+	Progress float64 `orm:"column(progress)" json:"progress"` // 完成进度 0-100
+	ErrorMessage string `orm:"column(error_message);type(text)" json:"error_message"` // 错误信息
+	CreateTime int64 `orm:"column(create_time)" json:"create_time"`
+	UpdateTime int64 `orm:"column(update_time)" json:"update_time"`
+}
+
+// AI量化策略参数优化回测结果
+type BacktestResult struct {
+	ID int64 `orm:"column(id)" json:"id"`
+	TaskID string `orm:"column(task_id)" json:"task_id"` // 关联的任务ID
+	ResultID string `orm:"column(result_id)" json:"result_id"` // 结果ID
+	Parameters string `orm:"column(parameters);type(text)" json:"parameters"` // 参数组合 JSON
+	
+	// 回测指标
+	TotalReturn float64 `orm:"column(total_return)" json:"total_return"` // 总收益率
+	AnnualReturn float64 `orm:"column(annual_return)" json:"annual_return"` // 年化收益率
+	MaxDrawdown float64 `orm:"column(max_drawdown)" json:"max_drawdown"` // 最大回撤
+	SharpeRatio float64 `orm:"column(sharpe_ratio)" json:"sharpe_ratio"` // 夏普比率
+	WinRate float64 `orm:"column(win_rate)" json:"win_rate"` // 胜率
+	TradeCount int64 `orm:"column(trade_count)" json:"trade_count"` // 交易次数
+	ProfitFactor float64 `orm:"column(profit_factor)" json:"profit_factor"` // 利润因子
+	
+	// 结果序列数据
+	EquityCurve string `orm:"column(equity_curve);type(text)" json:"equity_curve"` // 权益曲线 JSON
+	TradeList string `orm:"column(trade_list);type(text)" json:"trade_list"` // 交易记录 JSON
+	
+	CreateTime int64 `orm:"column(create_time)" json:"create_time"`
+}
+
+// 已部署策略配置
+type DeployedStrategy struct {
+	ID int64 `orm:"column(id)" json:"id"`
+	StrategyID string `orm:"column(strategy_id)" json:"strategy_id"` // 策略ID
+	Name string `orm:"column(name)" json:"name"` // 策略名称
+	Symbol string `orm:"column(symbol)" json:"symbol"` // 应用币种
+	Parameters string `orm:"column(parameters);type(text)" json:"parameters"` // 最优参数 JSON
+	Strategy string `orm:"column(strategy);type(text)" json:"strategy"` // 策略表达式
+	Status string `orm:"column(status)" json:"status"` // 部署状态: active, inactive, error
+	
+	// 部署信息
+	DeployedBy string `orm:"column(deployed_by)" json:"deployed_by"` // 部署者
+	DeployTime int64 `orm:"column(deploy_time)" json:"deploy_time"` // 部署时间
+	
+	// 关联的回测结果
+	BacktestTaskID string `orm:"column(backtest_task_id)" json:"backtest_task_id"` // 关联的回测任务ID
+	BacktestResultID string `orm:"column(backtest_result_id)" json:"backtest_result_id"` // 关联的回测结果ID
+	
+	// 实盘表现
+	LiveReturn float64 `orm:"column(live_return)" json:"live_return"` // 实盘收益率
+	LiveTradeCount int64 `orm:"column(live_trade_count)" json:"live_trade_count"` // 实盘交易次数
+	LastUpdateTime int64 `orm:"column(last_update_time)" json:"last_update_time"` // 最后更新时间
+	
+	CreateTime int64 `orm:"column(create_time)" json:"create_time"`
+	UpdateTime int64 `orm:"column(update_time)" json:"update_time"`
+}
+
+// 操作日志
+type OperationLog struct {
+	ID int64 `orm:"column(id)" json:"id"`
+	UserID string `orm:"column(user_id)" json:"user_id"` // 用户ID
+	Operation string `orm:"column(operation)" json:"operation"` // 操作类型
+	ResourceType string `orm:"column(resource_type)" json:"resource_type"` // 资源类型
+	ResourceID string `orm:"column(resource_id)" json:"resource_id"` // 资源ID
+	Details string `orm:"column(details);type(text)" json:"details"` // 操作详情 JSON
+	IPAddress string `orm:"column(ip_address)" json:"ip_address"` // IP地址
+	UserAgent string `orm:"column(user_agent)" json:"user_agent"` // 用户代理
+	CreateTime int64 `orm:"column(create_time)" json:"create_time"`
+}
+
+func (u *BacktestTask) TableName() string {
+    return "backtest_tasks"
+}
+
+func (u *BacktestResult) TableName() string {
+    return "backtest_results"
+}
+
+func (u *DeployedStrategy) TableName() string {
+    return "deployed_strategies"
+}
+
+func (u *OperationLog) TableName() string {
+    return "operation_logs"
+}
