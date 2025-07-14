@@ -393,6 +393,18 @@ func StartTrade(systemConfig models.Config) {
 		if _, exist := exclude_symbols_map[coin.Symbol]; exist { // 在白名单内
 			continue
 		}
+		
+		// 风控检查 - 检查是否被冻结
+		freezeService := utils.NewFreezeService()
+		strategyName := getStrategyNameFromConfig(systemConfig)
+		tradeType := "real" // 默认为实盘交易
+		
+		if freezeService.IsFrozen(coin.Symbol, strategyName, tradeType) {
+			remainingTime := freezeService.GetRemainingFreezeTime(coin.Symbol, strategyName, tradeType)
+			logs.Info("%s:策略被冻结，剩余时间: %d秒", coin.Symbol, remainingTime)
+			continue
+		}
+		
 		positionSideLong := "LONG"
       	positionSideShort := "SHORT"
 		symbol := coin.Symbol
@@ -669,6 +681,30 @@ func insertCloseOrder(position types.FuturesPosition, positionAmtFloat float64, 
 	
 	// 自动缩放
 	AutoLossScale(systemConfig, unRealizedProfit >= 0)
+	
+	// 风控处理 - 记录盈亏
+	freezeService := utils.NewFreezeService()
+	strategyName := getStrategyNameFromConfig(systemConfig)
+	tradeType := "real" // 默认为实盘交易
+	
+	if unRealizedProfit < 0 {
+		// 亏损，记录亏损次数
+		err := freezeService.RecordLoss(position.Symbol, strategyName, tradeType)
+		if err != nil {
+			logs.Error("记录策略亏损失败:", err)
+		}
+	} else {
+		// 盈利，清零亏损次数
+		err := freezeService.RecordProfit(position.Symbol, strategyName, tradeType)
+		if err != nil {
+			logs.Error("记录策略盈利失败:", err)
+		}
+	}
+}
+
+// 根据配置获取策略名称
+func getStrategyNameFromConfig(systemConfig models.Config) string {
+	return systemConfig.FutureStrategyTrade + "_" + systemConfig.FutureStrategyCoin
 }
 
 // 更新币种的交易精度和插入新币
