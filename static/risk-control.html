@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>策略风控管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/element-ui@2.15.9/lib/theme-chalk/index.css" rel="stylesheet">
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: #409EFF;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .card {
+            margin-bottom: 20px;
+        }
+        .status-normal {
+            color: #67C23A;
+        }
+        .status-frozen {
+            color: #F56C6C;
+        }
+        .operation-logs {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="container">
+        <div class="header">
+            <h1>策略风控管理系统</h1>
+            <p>管理策略交易风控配置，监控策略状态和操作日志</p>
+        </div>
+
+        <el-tabs v-model="activeTab" type="card">
+            <!-- 风控配置管理 -->
+            <el-tab-pane label="风控配置" name="config">
+                <div class="card">
+                    <el-row :gutter="20">
+                        <el-col :span="8">
+                            <el-button type="primary" @click="showAddDialog">新增配置</el-button>
+                        </el-col>
+                        <el-col :span="16">
+                            <el-button @click="refreshData">刷新</el-button>
+                            <el-switch v-model="autoRefresh" active-text="自动刷新" inactive-text="手动刷新" style="margin-left: 10px"></el-switch>
+                        </el-col>
+                    </el-row>
+                </div>
+
+                <el-table :data="configList" v-loading="loading" style="width: 100%">
+                    <el-table-column prop="symbol" label="交易对" width="120"></el-table-column>
+                    <el-table-column prop="strategy_name" label="策略名称" width="150"></el-table-column>
+                    <el-table-column prop="trade_type" label="交易类型" width="100">
+                        <template slot-scope="scope">
+                            <el-tag :type="scope.row.trade_type === 'real' ? 'success' : 'warning'">
+                                {{ scope.row.trade_type === 'real' ? '实盘' : '测试' }}
+                            </el-tag>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="freeze_on_loss_count" label="冻结阈值" width="100"></el-table-column>
+                    <el-table-column prop="freeze_hours" label="冻结时长(h)" width="100"></el-table-column>
+                    <el-table-column prop="loss_count" label="当前亏损次数" width="120"></el-table-column>
+                    <el-table-column label="状态" width="120">
+                        <template slot-scope="scope">
+                            <span v-if="isFrozen(scope.row)" class="status-frozen">
+                                <i class="el-icon-warning"></i> 冻结中
+                            </span>
+                            <span v-else class="status-normal">
+                                <i class="el-icon-check"></i> 正常
+                            </span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="剩余时间" width="120">
+                        <template slot-scope="scope">
+                            <span v-if="isFrozen(scope.row)">
+                                {{ formatTime(getRemainingTime(scope.row)) }}
+                            </span>
+                            <span v-else>-</span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="240">
+                        <template slot-scope="scope">
+                            <el-button size="mini" @click="editConfig(scope.row)">编辑</el-button>
+                            <el-button size="mini" type="warning" @click="unfreezeConfig(scope.row)" v-if="isFrozen(scope.row)">解冻</el-button>
+                            <el-button size="mini" type="info" @click="resetLossCount(scope.row)">重置</el-button>
+                            <el-button size="mini" type="danger" @click="deleteConfig(scope.row)">删除</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+
+                <el-pagination
+                    @size-change="handleSizeChange"
+                    @current-change="handleCurrentChange"
+                    :current-page="currentPage"
+                    :page-sizes="[10, 20, 50, 100]"
+                    :page-size="pageSize"
+                    layout="total, sizes, prev, pager, next, jumper"
+                    :total="total"
+                    style="margin-top: 20px; text-align: center">
+                </el-pagination>
+            </el-tab-pane>
+
+            <!-- 操作日志 -->
+            <el-tab-pane label="操作日志" name="logs">
+                <div class="card">
+                    <el-row :gutter="20">
+                        <el-col :span="8">
+                            <el-input v-model="logFilter.userName" placeholder="用户名" clearable></el-input>
+                        </el-col>
+                        <el-col :span="8">
+                            <el-select v-model="logFilter.resource" placeholder="资源类型" clearable>
+                                <el-option label="策略风控" value="strategy_freeze"></el-option>
+                            </el-select>
+                        </el-col>
+                        <el-col :span="8">
+                            <el-button type="primary" @click="loadOperationLogs">查询</el-button>
+                        </el-col>
+                    </el-row>
+                </div>
+
+                <el-table :data="operationLogs" v-loading="logsLoading" style="width: 100%">
+                    <el-table-column prop="user_name" label="用户" width="120"></el-table-column>
+                    <el-table-column prop="operation" label="操作" width="120">
+                        <template slot-scope="scope">
+                            <el-tag :type="getOperationTagType(scope.row.operation)">
+                                {{ getOperationText(scope.row.operation) }}
+                            </el-tag>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="resource_id" label="资源ID" width="200"></el-table-column>
+                    <el-table-column prop="ip_address" label="IP地址" width="150"></el-table-column>
+                    <el-table-column prop="created_at" label="操作时间" width="180">
+                        <template slot-scope="scope">
+                            {{ formatTimestamp(scope.row.created_at) }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="details" label="详情" min-width="200">
+                        <template slot-scope="scope">
+                            <el-button size="mini" type="text" @click="showDetails(scope.row)">查看详情</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+
+                <el-pagination
+                    @size-change="handleLogSizeChange"
+                    @current-change="handleLogCurrentChange"
+                    :current-page="logCurrentPage"
+                    :page-sizes="[10, 20, 50, 100]"
+                    :page-size="logPageSize"
+                    layout="total, sizes, prev, pager, next, jumper"
+                    :total="logTotal"
+                    style="margin-top: 20px; text-align: center">
+                </el-pagination>
+            </el-tab-pane>
+        </el-tabs>
+
+        <!-- 新增/编辑配置对话框 -->
+        <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" width="600px">
+            <el-form ref="configForm" :model="configForm" :rules="configRules" label-width="120px">
+                <el-form-item label="交易对" prop="symbol">
+                    <el-input v-model="configForm.symbol" placeholder="如：BTCUSDT"></el-input>
+                </el-form-item>
+                <el-form-item label="策略名称" prop="strategy_name">
+                    <el-input v-model="configForm.strategy_name" placeholder="策略名称"></el-input>
+                </el-form-item>
+                <el-form-item label="交易类型" prop="trade_type">
+                    <el-select v-model="configForm.trade_type" placeholder="请选择交易类型">
+                        <el-option label="实盘" value="real"></el-option>
+                        <el-option label="测试" value="test"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="冻结阈值" prop="freeze_on_loss_count">
+                    <el-input-number v-model="configForm.freeze_on_loss_count" :min="1" :max="100" placeholder="连续亏损次数"></el-input-number>
+                </el-form-item>
+                <el-form-item label="冻结时长" prop="freeze_hours">
+                    <el-input-number v-model="configForm.freeze_hours" :min="1" :max="168" placeholder="冻结小时数"></el-input-number>
+                </el-form-item>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+                <el-button @click="dialogVisible = false">取消</el-button>
+                <el-button type="primary" @click="saveConfig">保存</el-button>
+            </div>
+        </el-dialog>
+
+        <!-- 详情对话框 -->
+        <el-dialog title="操作详情" :visible.sync="detailsVisible" width="800px">
+            <el-input type="textarea" :rows="20" v-model="detailsContent" readonly></el-input>
+        </el-dialog>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.9/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.5.0/dist/axios.min.js"></script>
+    <script>
+        const { createApp } = Vue;
+        
+        new Vue({
+            el: '#app',
+            data() {
+                return {
+                    activeTab: 'config',
+                    autoRefresh: true,
+                    loading: false,
+                    logsLoading: false,
+                    configList: [],
+                    operationLogs: [],
+                    currentPage: 1,
+                    pageSize: 20,
+                    total: 0,
+                    logCurrentPage: 1,
+                    logPageSize: 20,
+                    logTotal: 0,
+                    logFilter: {
+                        userName: '',
+                        resource: 'strategy_freeze'
+                    },
+                    dialogVisible: false,
+                    detailsVisible: false,
+                    detailsContent: '',
+                    dialogTitle: '新增配置',
+                    configForm: {
+                        symbol: '',
+                        strategy_name: '',
+                        trade_type: '',
+                        freeze_on_loss_count: 5,
+                        freeze_hours: 24
+                    },
+                    configRules: {
+                        symbol: [
+                            { required: true, message: '请输入交易对', trigger: 'blur' }
+                        ],
+                        strategy_name: [
+                            { required: true, message: '请输入策略名称', trigger: 'blur' }
+                        ],
+                        trade_type: [
+                            { required: true, message: '请选择交易类型', trigger: 'change' }
+                        ],
+                        freeze_on_loss_count: [
+                            { required: true, message: '请输入冻结阈值', trigger: 'blur' }
+                        ],
+                        freeze_hours: [
+                            { required: true, message: '请输入冻结时长', trigger: 'blur' }
+                        ]
+                    },
+                    editingId: null,
+                    refreshTimer: null
+                };
+            },
+            mounted() {
+                this.loadData();
+                this.loadOperationLogs();
+                this.startAutoRefresh();
+            },
+            beforeDestroy() {
+                if (this.refreshTimer) {
+                    clearInterval(this.refreshTimer);
+                }
+            },
+            methods: {
+                async loadData() {
+                    this.loading = true;
+                    try {
+                        const response = await axios.get('/strategy-freeze', {
+                            params: {
+                                page: this.currentPage,
+                                pageSize: this.pageSize
+                            },
+                            headers: {
+                                'Authorization': 'Bearer ' + this.getToken()
+                            }
+                        });
+                        
+                        if (response.data.code === 200) {
+                            this.configList = response.data.data.list || [];
+                            this.total = response.data.data.total || 0;
+                        } else {
+                            this.$message.error(response.data.message || '加载失败');
+                        }
+                    } catch (error) {
+                        this.$message.error('网络错误: ' + error.message);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                
+                async loadOperationLogs() {
+                    this.logsLoading = true;
+                    try {
+                        const response = await axios.get('/strategy-freeze/operation-logs', {
+                            params: {
+                                page: this.logCurrentPage,
+                                pageSize: this.logPageSize,
+                                resource: this.logFilter.resource,
+                                user_name: this.logFilter.userName
+                            },
+                            headers: {
+                                'Authorization': 'Bearer ' + this.getToken()
+                            }
+                        });
+                        
+                        if (response.data.code === 200) {
+                            this.operationLogs = response.data.data.list || [];
+                            this.logTotal = response.data.data.total || 0;
+                        } else {
+                            this.$message.error(response.data.message || '加载日志失败');
+                        }
+                    } catch (error) {
+                        this.$message.error('网络错误: ' + error.message);
+                    } finally {
+                        this.logsLoading = false;
+                    }
+                },
+                
+                refreshData() {
+                    this.loadData();
+                },
+                
+                startAutoRefresh() {
+                    if (this.refreshTimer) {
+                        clearInterval(this.refreshTimer);
+                    }
+                    
+                    this.refreshTimer = setInterval(() => {
+                        if (this.autoRefresh) {
+                            this.loadData();
+                        }
+                    }, 30000); // 30秒刷新一次
+                },
+                
+                showAddDialog() {
+                    this.dialogTitle = '新增配置';
+                    this.configForm = {
+                        symbol: '',
+                        strategy_name: '',
+                        trade_type: '',
+                        freeze_on_loss_count: 5,
+                        freeze_hours: 24
+                    };
+                    this.editingId = null;
+                    this.dialogVisible = true;
+                },
+                
+                editConfig(row) {
+                    this.dialogTitle = '编辑配置';
+                    this.configForm = { ...row };
+                    this.editingId = row.id;
+                    this.dialogVisible = true;
+                },
+                
+                async saveConfig() {
+                    try {
+                        await this.$refs.configForm.validate();
+                        
+                        const url = this.editingId ? `/strategy-freeze/${this.editingId}` : '/strategy-freeze';
+                        const method = this.editingId ? 'put' : 'post';
+                        
+                        const response = await axios[method](url, this.configForm, {
+                            headers: {
+                                'Authorization': 'Bearer ' + this.getToken()
+                            }
+                        });
+                        
+                        if (response.data.code === 200) {
+                            this.$message.success(response.data.message);
+                            this.dialogVisible = false;
+                            this.loadData();
+                        } else {
+                            this.$message.error(response.data.message || '保存失败');
+                        }
+                    } catch (error) {
+                        if (error.response && error.response.data.code === 403) {
+                            this.$message.error('权限不足');
+                        } else {
+                            this.$message.error('网络错误: ' + error.message);
+                        }
+                    }
+                },
+                
+                async unfreezeConfig(row) {
+                    try {
+                        await this.$confirm('确定要解除冻结吗？', '确认', {
+                            confirmButtonText: '确定',
+                            cancelButtonText: '取消',
+                            type: 'warning'
+                        });
+                        
+                        const response = await axios.post('/strategy-freeze/unfreeze', {}, {
+                            params: {
+                                symbol: row.symbol,
+                                strategy_name: row.strategy_name,
+                                trade_type: row.trade_type
+                            },
+                            headers: {
+                                'Authorization': 'Bearer ' + this.getToken()
+                            }
+                        });
+                        
+                        if (response.data.code === 200) {
+                            this.$message.success(response.data.message);
+                            this.loadData();
+                        } else {
+                            this.$message.error(response.data.message || '解除冻结失败');
+                        }
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            if (error.response && error.response.data.code === 403) {
+                                this.$message.error('权限不足，只有管理员可以解除冻结');
+                            } else {
+                                this.$message.error('网络错误: ' + error.message);
+                            }
+                        }
+                    }
+                },
+                
+                async resetLossCount(row) {
+                    try {
+                        await this.$confirm('确定要重置亏损次数吗？', '确认', {
+                            confirmButtonText: '确定',
+                            cancelButtonText: '取消',
+                            type: 'warning'
+                        });
+                        
+                        const response = await axios.post('/strategy-freeze/reset-loss', {}, {
+                            params: {
+                                symbol: row.symbol,
+                                strategy_name: row.strategy_name,
+                                trade_type: row.trade_type
+                            },
+                            headers: {
+                                'Authorization': 'Bearer ' + this.getToken()
+                            }
+                        });
+                        
+                        if (response.data.code === 200) {
+                            this.$message.success(response.data.message);
+                            this.loadData();
+                        } else {
+                            this.$message.error(response.data.message || '重置失败');
+                        }
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            if (error.response && error.response.data.code === 403) {
+                                this.$message.error('权限不足，只有管理员可以重置亏损次数');
+                            } else {
+                                this.$message.error('网络错误: ' + error.message);
+                            }
+                        }
+                    }
+                },
+                
+                async deleteConfig(row) {
+                    try {
+                        await this.$confirm('确定要删除此配置吗？', '确认', {
+                            confirmButtonText: '确定',
+                            cancelButtonText: '取消',
+                            type: 'warning'
+                        });
+                        
+                        const response = await axios.delete(`/strategy-freeze/${row.id}`, {
+                            headers: {
+                                'Authorization': 'Bearer ' + this.getToken()
+                            }
+                        });
+                        
+                        if (response.data.code === 200) {
+                            this.$message.success(response.data.message);
+                            this.loadData();
+                        } else {
+                            this.$message.error(response.data.message || '删除失败');
+                        }
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            if (error.response && error.response.data.code === 403) {
+                                this.$message.error('权限不足，只有管理员可以删除配置');
+                            } else {
+                                this.$message.error('网络错误: ' + error.message);
+                            }
+                        }
+                    }
+                },
+                
+                showDetails(row) {
+                    this.detailsContent = JSON.stringify(JSON.parse(row.details), null, 2);
+                    this.detailsVisible = true;
+                },
+                
+                handleSizeChange(newSize) {
+                    this.pageSize = newSize;
+                    this.loadData();
+                },
+                
+                handleCurrentChange(newPage) {
+                    this.currentPage = newPage;
+                    this.loadData();
+                },
+                
+                handleLogSizeChange(newSize) {
+                    this.logPageSize = newSize;
+                    this.loadOperationLogs();
+                },
+                
+                handleLogCurrentChange(newPage) {
+                    this.logCurrentPage = newPage;
+                    this.loadOperationLogs();
+                },
+                
+                isFrozen(row) {
+                    return row.freeze_until && row.freeze_until > Date.now() / 1000;
+                },
+                
+                getRemainingTime(row) {
+                    if (!this.isFrozen(row)) return 0;
+                    return Math.max(0, row.freeze_until - Date.now() / 1000);
+                },
+                
+                formatTime(seconds) {
+                    if (seconds <= 0) return '0分钟';
+                    const hours = Math.floor(seconds / 3600);
+                    const minutes = Math.floor((seconds % 3600) / 60);
+                    if (hours > 0) {
+                        return `${hours}小时${minutes}分钟`;
+                    } else {
+                        return `${minutes}分钟`;
+                    }
+                },
+                
+                formatTimestamp(timestamp) {
+                    return new Date(timestamp * 1000).toLocaleString();
+                },
+                
+                getOperationText(operation) {
+                    const texts = {
+                        'create': '创建',
+                        'update': '更新',
+                        'delete': '删除',
+                        'unfreeze': '解冻',
+                        'reset_loss': '重置亏损'
+                    };
+                    return texts[operation] || operation;
+                },
+                
+                getOperationTagType(operation) {
+                    const types = {
+                        'create': 'success',
+                        'update': 'primary',
+                        'delete': 'danger',
+                        'unfreeze': 'warning',
+                        'reset_loss': 'info'
+                    };
+                    return types[operation] || 'info';
+                },
+                
+                getToken() {
+                    // 检查是否已有token
+                    let token = localStorage.getItem('binance_token');
+                    if (!token) {
+                        // 自动登录
+                        this.autoLogin();
+                        token = localStorage.getItem('binance_token');
+                    }
+                    return token || '';
+                },
+                
+                async autoLogin() {
+                    try {
+                        const response = await axios.post('/login', {
+                            username: 'admin',
+                            password: 'admin'
+                        });
+                        
+                        if (response.data.code === 200) {
+                            const token = response.data.data.token.replace('Bearer ', '');
+                            localStorage.setItem('binance_token', token);
+                        }
+                    } catch (error) {
+                        console.error('自动登录失败:', error);
+                    }
+                }
+            },
+            watch: {
+                autoRefresh(newVal) {
+                    if (newVal) {
+                        this.startAutoRefresh();
+                    } else if (this.refreshTimer) {
+                        clearInterval(this.refreshTimer);
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

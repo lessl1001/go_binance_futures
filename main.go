@@ -82,6 +82,7 @@ func registerModels() {
 	orm.RegisterModel(new(models.FuturesPosition))
 	orm.RegisterModel(new(models.FuturesOrder))
 	orm.RegisterModel(new(models.StrategyFreeze))
+	orm.RegisterModel(new(models.OperationLog))
 	
 	setDriver(driver) // 设置数据库驱动
 	syncDb() // 同步数据库

@@ -112,3 +112,7 @@ func (ctrl *IndexController) TestPusher() {
 		"msg": "success",
 	})
 }
+
+func (ctrl *IndexController) RiskControl() {
+	ctrl.TplName = "risk-control.html"
+}

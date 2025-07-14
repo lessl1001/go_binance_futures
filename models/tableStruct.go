@@ -275,3 +275,20 @@ type StrategyFreeze struct {
 func (u *StrategyFreeze) TableName() string {
     return "strategy_freeze"
 }
+
+// 操作日志
+type OperationLog struct {
+	ID int64 `orm:"column(id)" json:"id"`
+	UserName string `orm:"column(user_name)" json:"user_name"`
+	Operation string `orm:"column(operation)" json:"operation"` // 操作类型：create, update, delete, unfreeze, reset_loss
+	Resource string `orm:"column(resource)" json:"resource"` // 资源类型：strategy_freeze
+	ResourceID string `orm:"column(resource_id)" json:"resource_id"` // 资源ID或标识
+	Details string `orm:"column(details);type(text)" json:"details"` // 操作详情
+	IPAddress string `orm:"column(ip_address)" json:"ip_address"` // 操作IP
+	UserAgent string `orm:"column(user_agent)" json:"user_agent"` // 用户代理
+	CreatedAt int64 `orm:"column(created_at)" json:"created_at"` // 创建时间
+}
+
+func (u *OperationLog) TableName() string {
+    return "operation_logs"
+}

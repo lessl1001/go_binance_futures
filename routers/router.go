@@ -66,10 +66,13 @@ func init() {
 	web.Router("/strategy-templates/test/:symbol", &controllers.StrategyTemplateController{}, "post:TestStrategyRule") // 测试策略规则
 	
 	web.Router("/strategy-freeze", &controllers.StrategyFreezeController{}, "get:Get;post:Post") // 策略冻结配置
-	web.Router("/strategy-freeze/:id", &controllers.StrategyFreezeController{}, "put:Edit") // 更新策略冻结配置
+	web.Router("/strategy-freeze/:id", &controllers.StrategyFreezeController{}, "put:Edit;delete:Delete") // 更新和删除策略冻结配置
 	web.Router("/strategy-freeze/config", &controllers.StrategyFreezeController{}, "get:GetOne") // 获取单个冻结配置
 	web.Router("/strategy-freeze/unfreeze", &controllers.StrategyFreezeController{}, "post:Unfreeze") // 手动解除冻结
 	web.Router("/strategy-freeze/reset-loss", &controllers.StrategyFreezeController{}, "post:ResetLossCount") // 重置亏损次数
+	web.Router("/strategy-freeze/operation-logs", &controllers.StrategyFreezeController{}, "get:GetOperationLogs") // 获取操作日志
+	
+	web.Router("/risk-control", &controllers.IndexController{}, "get:RiskControl") // 风控管理页面
 	
 	web.Router("/start", &controllers.CommandController{}, "post:Start") // start
 	web.Router("/stop", &controllers.CommandController{}, "post:Stop") // stop

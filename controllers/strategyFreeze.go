@@ -65,6 +65,17 @@ func (c *StrategyFreezeController) Get() {
 
 // 创建或更新冻结配置
 func (c *StrategyFreezeController) Post() {
+	// 权限验证
+	opLogService := utils.NewOperationLogService()
+	if !opLogService.HasPermission(c.Ctx, "create") {
+		c.Data["json"] = map[string]interface{}{
+			"code":    403,
+			"message": "权限不足",
+		}
+		c.ServeJSON()
+		return
+	}
+	
 	var freeze models.StrategyFreeze
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &freeze); err != nil {
 		logs.Error("解析请求参数失败:", err)
@@ -106,11 +117,13 @@ func (c *StrategyFreezeController) Post() {
 	}
 	
 	freezeService := utils.NewFreezeService()
+	resourceID := freeze.Symbol + "-" + freeze.StrategyName + "-" + freeze.TradeType
 	
 	// 检查是否已存在
 	existingFreeze, err := freezeService.GetFreezeConfig(freeze.Symbol, freeze.StrategyName, freeze.TradeType)
 	if err == nil {
 		// 更新现有配置
+		oldConfig := *existingFreeze
 		existingFreeze.FreezeOnLossCount = freeze.FreezeOnLossCount
 		existingFreeze.FreezeHours = freeze.FreezeHours
 		if freeze.LossCount >= 0 {
@@ -131,6 +144,12 @@ func (c *StrategyFreezeController) Post() {
 			c.ServeJSON()
 			return
 		}
+		
+		// 记录操作日志
+		opLogService.LogOperation(c.Ctx, "update", "strategy_freeze", resourceID, map[string]interface{}{
+			"old_config": oldConfig,
+			"new_config": existingFreeze,
+		})
 		
 		c.Data["json"] = map[string]interface{}{
 			"code":    200,
@@ -172,6 +191,11 @@ func (c *StrategyFreezeController) Post() {
 			c.ServeJSON()
 			return
 		}
+		
+		// 记录操作日志
+		opLogService.LogOperation(c.Ctx, "create", "strategy_freeze", resourceID, map[string]interface{}{
+			"config": newFreeze,
+		})
 		
 		c.Data["json"] = map[string]interface{}{
 			"code":    200,
@@ -232,6 +256,17 @@ func (c *StrategyFreezeController) GetOne() {
 
 // 更新冻结配置
 func (c *StrategyFreezeController) Edit() {
+	// 权限验证
+	opLogService := utils.NewOperationLogService()
+	if !opLogService.HasPermission(c.Ctx, "update") {
+		c.Data["json"] = map[string]interface{}{
+			"code":    403,
+			"message": "权限不足",
+		}
+		c.ServeJSON()
+		return
+	}
+	
 	idStr := c.Ctx.Input.Param(":id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
@@ -255,8 +290,22 @@ func (c *StrategyFreezeController) Edit() {
 		return
 	}
 	
-	freeze.ID = id
+	// 获取原配置用于记录日志
 	freezeService := utils.NewFreezeService()
+	var oldFreeze models.StrategyFreeze
+	err = freezeService.Orm.QueryTable("strategy_freeze").Filter("id", id).One(&oldFreeze)
+	if err != nil {
+		logs.Error("获取原配置失败:", err)
+		c.Data["json"] = map[string]interface{}{
+			"code":    500,
+			"message": "获取原配置失败",
+			"error":   err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
+	
+	freeze.ID = id
 	err = freezeService.UpdateFreezeConfig(&freeze)
 	if err != nil {
 		logs.Error("更新冻结配置失败:", err)
@@ -269,6 +318,13 @@ func (c *StrategyFreezeController) Edit() {
 		return
 	}
 	
+	// 记录操作日志
+	resourceID := freeze.Symbol + "-" + freeze.StrategyName + "-" + freeze.TradeType
+	opLogService.LogOperation(c.Ctx, "update", "strategy_freeze", resourceID, map[string]interface{}{
+		"old_config": oldFreeze,
+		"new_config": freeze,
+	})
+	
 	c.Data["json"] = map[string]interface{}{
 		"code":    200,
 		"message": "更新成功",
@@ -279,6 +335,17 @@ func (c *StrategyFreezeController) Edit() {
 
 // 手动解除冻结
 func (c *StrategyFreezeController) Unfreeze() {
+	// 权限验证
+	opLogService := utils.NewOperationLogService()
+	if !opLogService.HasPermission(c.Ctx, "unfreeze") {
+		c.Data["json"] = map[string]interface{}{
+			"code":    403,
+			"message": "权限不足，只有管理员可以手动解除冻结",
+		}
+		c.ServeJSON()
+		return
+	}
+	
 	symbol := c.GetString("symbol")
 	strategyName := c.GetString("strategy_name")
 	tradeType := c.GetString("trade_type")
@@ -293,7 +360,21 @@ func (c *StrategyFreezeController) Unfreeze() {
 	}
 	
 	freezeService := utils.NewFreezeService()
-	err := freezeService.UnfreezeManually(symbol, strategyName, tradeType)
+	
+	// 获取当前配置用于记录日志
+	currentConfig, err := freezeService.GetFreezeConfig(symbol, strategyName, tradeType)
+	if err != nil {
+		logs.Error("获取当前配置失败:", err)
+		c.Data["json"] = map[string]interface{}{
+			"code":    500,
+			"message": "获取当前配置失败",
+			"error":   err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
+	
+	err = freezeService.UnfreezeManually(symbol, strategyName, tradeType)
 	if err != nil {
 		logs.Error("解除冻结失败:", err)
 		c.Data["json"] = map[string]interface{}{
@@ -305,6 +386,15 @@ func (c *StrategyFreezeController) Unfreeze() {
 		return
 	}
 	
+	// 记录操作日志
+	resourceID := symbol + "-" + strategyName + "-" + tradeType
+	opLogService.LogOperation(c.Ctx, "unfreeze", "strategy_freeze", resourceID, map[string]interface{}{
+		"symbol":        symbol,
+		"strategy_name": strategyName,
+		"trade_type":    tradeType,
+		"previous_freeze_until": currentConfig.FreezeUntil,
+	})
+	
 	c.Data["json"] = map[string]interface{}{
 		"code":    200,
 		"message": "解除冻结成功",
@@ -314,6 +404,17 @@ func (c *StrategyFreezeController) Unfreeze() {
 
 // 重置亏损次数
 func (c *StrategyFreezeController) ResetLossCount() {
+	// 权限验证
+	opLogService := utils.NewOperationLogService()
+	if !opLogService.HasPermission(c.Ctx, "reset_loss") {
+		c.Data["json"] = map[string]interface{}{
+			"code":    403,
+			"message": "权限不足，只有管理员可以重置亏损次数",
+		}
+		c.ServeJSON()
+		return
+	}
+	
 	symbol := c.GetString("symbol")
 	strategyName := c.GetString("strategy_name")
 	tradeType := c.GetString("trade_type")
@@ -328,7 +429,21 @@ func (c *StrategyFreezeController) ResetLossCount() {
 	}
 	
 	freezeService := utils.NewFreezeService()
-	err := freezeService.ResetLossCount(symbol, strategyName, tradeType)
+	
+	// 获取当前配置用于记录日志
+	currentConfig, err := freezeService.GetFreezeConfig(symbol, strategyName, tradeType)
+	if err != nil {
+		logs.Error("获取当前配置失败:", err)
+		c.Data["json"] = map[string]interface{}{
+			"code":    500,
+			"message": "获取当前配置失败",
+			"error":   err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
+	
+	err = freezeService.ResetLossCount(symbol, strategyName, tradeType)
 	if err != nil {
 		logs.Error("重置亏损次数失败:", err)
 		c.Data["json"] = map[string]interface{}{
@@ -340,9 +455,124 @@ func (c *StrategyFreezeController) ResetLossCount() {
 		return
 	}
 	
+	// 记录操作日志
+	resourceID := symbol + "-" + strategyName + "-" + tradeType
+	opLogService.LogOperation(c.Ctx, "reset_loss", "strategy_freeze", resourceID, map[string]interface{}{
+		"symbol":        symbol,
+		"strategy_name": strategyName,
+		"trade_type":    tradeType,
+		"previous_loss_count": currentConfig.LossCount,
+	})
+	
 	c.Data["json"] = map[string]interface{}{
 		"code":    200,
 		"message": "重置亏损次数成功",
+	}
+	c.ServeJSON()
+}
+
+// 删除冻结配置
+func (c *StrategyFreezeController) Delete() {
+	// 权限验证
+	opLogService := utils.NewOperationLogService()
+	if !opLogService.HasPermission(c.Ctx, "delete") {
+		c.Data["json"] = map[string]interface{}{
+			"code":    403,
+			"message": "权限不足，只有管理员可以删除配置",
+		}
+		c.ServeJSON()
+		return
+	}
+	
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"code":    400,
+			"message": "无效的ID",
+		}
+		c.ServeJSON()
+		return
+	}
+	
+	freezeService := utils.NewFreezeService()
+	
+	// 获取配置信息用于记录日志
+	var freeze models.StrategyFreeze
+	err = freezeService.Orm.QueryTable("strategy_freeze").Filter("id", id).One(&freeze)
+	if err != nil {
+		logs.Error("获取配置失败:", err)
+		c.Data["json"] = map[string]interface{}{
+			"code":    500,
+			"message": "获取配置失败",
+			"error":   err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
+	
+	// 删除配置
+	_, err = freezeService.Orm.Delete(&freeze)
+	if err != nil {
+		logs.Error("删除配置失败:", err)
+		c.Data["json"] = map[string]interface{}{
+			"code":    500,
+			"message": "删除配置失败",
+			"error":   err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
+	
+	// 记录操作日志
+	resourceID := freeze.Symbol + "-" + freeze.StrategyName + "-" + freeze.TradeType
+	opLogService.LogOperation(c.Ctx, "delete", "strategy_freeze", resourceID, map[string]interface{}{
+		"deleted_config": freeze,
+	})
+	
+	c.Data["json"] = map[string]interface{}{
+		"code":    200,
+		"message": "删除成功",
+	}
+	c.ServeJSON()
+}
+
+// 获取操作日志
+func (c *StrategyFreezeController) GetOperationLogs() {
+	page, _ := c.GetInt("page", 1)
+	pageSize, _ := c.GetInt("pageSize", 20)
+	resource := c.GetString("resource")
+	userName := c.GetString("user_name")
+	
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+	
+	opLogService := utils.NewOperationLogService()
+	operationLogs, total, err := opLogService.GetOperationLogs(page, pageSize, resource, userName)
+	if err != nil {
+		logs.Error("获取操作日志失败:", err)
+		c.Data["json"] = map[string]interface{}{
+			"code":    500,
+			"message": "获取操作日志失败",
+			"error":   err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
+	
+	c.Data["json"] = map[string]interface{}{
+		"code":    200,
+		"message": "获取成功",
+		"data": map[string]interface{}{
+			"list":     operationLogs,
+			"total":    total,
+			"page":     page,
+			"pageSize": pageSize,
+		},
 	}
 	c.ServeJSON()
 }
