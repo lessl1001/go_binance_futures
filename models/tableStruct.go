@@ -257,3 +257,21 @@ func (u *StrategyTemplates) TableName() string {
 func (u *TestStrategyResults) TableName() string {
     return "test_strategy_results"
 }
+
+// 策略冻结风控
+type StrategyFreeze struct {
+	ID int64 `orm:"column(id)" json:"id"`
+	Symbol string `orm:"column(symbol)" json:"symbol"`
+	StrategyName string `orm:"column(strategy_name)" json:"strategy_name"`
+	TradeType string `orm:"column(trade_type)" json:"trade_type"` // real, test
+	FreezeUntil int64 `orm:"column(freeze_until)" json:"freeze_until"` // 冻结截止时间戳
+	LossCount int `orm:"column(loss_count)" json:"loss_count"` // 当前亏损次数
+	FreezeOnLossCount int `orm:"column(freeze_on_loss_count)" json:"freeze_on_loss_count"` // 达到此亏损次数后冻结
+	FreezeHours int `orm:"column(freeze_hours)" json:"freeze_hours"` // 冻结小时数
+	CreatedAt int64 `orm:"column(created_at)" json:"created_at"`
+	UpdatedAt int64 `orm:"column(updated_at)" json:"updated_at"`
+}
+
+func (u *StrategyFreeze) TableName() string {
+    return "strategy_freeze"
+}

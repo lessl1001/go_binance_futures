@@ -23,7 +23,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var dbVersion int64 = 6 // 每次变动数据库版本号 +1
+var dbVersion int64 = 7 // 每次变动数据库版本号 +1
 var debug, _ = config.String("debug")
 var webPort, _ = config.String("web::port")
 var webIndex, _ = config.String("web::index")
@@ -81,6 +81,7 @@ func registerModels() {
 	orm.RegisterModel(new(models.DeliverySymbols))
 	orm.RegisterModel(new(models.FuturesPosition))
 	orm.RegisterModel(new(models.FuturesOrder))
+	orm.RegisterModel(new(models.StrategyFreeze))
 	
 	setDriver(driver) // 设置数据库驱动
 	syncDb() // 同步数据库

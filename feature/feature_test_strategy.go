@@ -70,6 +70,18 @@ func NoticeAllSymbolByStrategy(systemConfig models.Config) {
 		if _, exist := exclude_symbols_map[coin.Symbol]; exist {
 			continue
 		} // 正在持仓的排除
+		
+		// 风控检查 - 检查是否被冻结
+		freezeService := utils.NewFreezeService()
+		strategyName := "test_strategy"
+		tradeType := "test"
+		
+		if freezeService.IsFrozen(coin.Symbol, strategyName, tradeType) {
+			remainingTime := freezeService.GetRemainingFreezeTime(coin.Symbol, strategyName, tradeType)
+			logs.Info("%s:测试策略被冻结，剩余时间: %d秒", coin.Symbol, remainingTime)
+			continue
+		}
+		
 		nowTime := time.Now().Unix() * 1000 // 毫秒时间戳
 		if coin.Enable != 1 {
 			continue
@@ -171,6 +183,17 @@ func CheckTestResults(systemConfig models.Config) {
 	}
 	
 	for _, result := range results {
+		// 风控检查 - 检查是否被冻结
+		freezeService := utils.NewFreezeService()
+		strategyName := "test_strategy" // 测试策略名称
+		tradeType := "test" // 测试交易类型
+		
+		if freezeService.IsFrozen(result.Symbol, strategyName, tradeType) {
+			remainingTime := freezeService.GetRemainingFreezeTime(result.Symbol, strategyName, tradeType)
+			logs.Info("%s:测试策略被冻结，剩余时间: %d秒", result.Symbol, remainingTime)
+			continue
+		}
+		
 		var strategyConfig technology.StrategyConfig
 		err := json.Unmarshal([]byte(result.Strategy), &strategyConfig)
 		if err != nil {
@@ -263,6 +286,26 @@ func CheckTestResults(systemConfig models.Config) {
 					result.CloseStrategy = strategy.Code
 					result.UpdateTime = time.Now().Unix() * 1000
 					orm.NewOrm().Update(result)
+					
+					// 风控处理 - 记录盈亏
+					freezeService := utils.NewFreezeService()
+					strategyName := "test_strategy"
+					tradeType := "test"
+					
+					if unRealizedProfit < 0 {
+						// 亏损，记录亏损次数
+						err := freezeService.RecordLoss(result.Symbol, strategyName, tradeType)
+						if err != nil {
+							logs.Error("记录测试策略亏损失败:", err)
+						}
+					} else {
+						// 盈利，清零亏损次数
+						err := freezeService.RecordProfit(result.Symbol, strategyName, tradeType)
+						if err != nil {
+							logs.Error("记录测试策略盈利失败:", err)
+						}
+					}
+					
 					// 平仓通知
 					quantity, _ := strconv.ParseFloat(result.PositionAmt, 64)
 					profitUsdt, _ := strconv.ParseFloat(result.CloseProfit, 64)
