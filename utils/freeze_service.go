@@ -238,5 +238,8 @@ func (fs *FreezeService) GetAllStrategies() ([]string, error) {
 func (fs *FreezeService) GetDistinctValues(field string) ([]string, error) {
 	var result orm.ParamsList
 	_, err := fs.orm.QueryTable("strategy_freeze").Distinct().ValuesFlat(field, &result)
-	return result, err
+	if err != nil {
+		return nil, err
+	}
+	return []string(result), nil
 }
