@@ -346,3 +346,56 @@ func (c *StrategyFreezeController) ResetLossCount() {
 	}
 	c.ServeJSON()
 }
+
+// Options 获取币种、策略、交易类型选项
+func (c *StrategyFreezeController) Options() {
+	freezeService := utils.NewFreezeService()
+
+	// 获取所有symbol
+	symbols, err := freezeService.GetAllSymbols()
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"code":    500,
+			"message": "获取symbol失败",
+			"error":   err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
+	// 获取所有strategy_name
+	strategies, err := freezeService.GetAllStrategies()
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"code":    500,
+			"message": "获取策略失败",
+			"error":   err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
+	// 交易类型一般是固定的
+	tradeTypes := []map[string]string{
+		{"label": "实盘", "value": "real"},
+		{"label": "测试", "value": "test"},
+	}
+
+	// 构造前端需要的格式
+	symbolOpts := []map[string]string{}
+	for _, s := range symbols {
+		symbolOpts = append(symbolOpts, map[string]string{"label": s, "value": s})
+	}
+	strategyOpts := []map[string]string{}
+	for _, s := range strategies {
+		strategyOpts = append(strategyOpts, map[string]string{"label": s, "value": s})
+	}
+
+	c.Data["json"] = map[string]interface{}{
+		"code": 200,
+		"data": map[string]interface{}{
+			"symbols":    symbolOpts,
+			"strategies": strategyOpts,
+			"tradeTypes": tradeTypes,
+		},
+	}
+	c.ServeJSON()
+}
