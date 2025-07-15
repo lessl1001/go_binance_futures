@@ -226,19 +226,27 @@ func (fs *FreezeService) ResetLossCount(symbol, strategyName, tradeType string) 
 
 // GetDistinctValues 用于通用distinct字段
 func (fs *FreezeService) GetDistinctValues(field string) ([]string, error) {
-    var result orm.ParamsList
-    _, err := fs.orm.QueryTable("strategy_freeze").Distinct().ValuesFlat(field, &result)
+    // 直接使用 []string 类型
+    var values []string
+    
+    // 先执行查询获取 QuerySeter
+    qs := fs.orm.QueryTable("strategy_freeze").Distinct()
+    
+    // 使用 Values 方法获取结果
+    var maps []orm.Params
+    _, err := qs.Values(&maps, field)
     if err != nil {
         return nil, err
     }
     
-    // 将 orm.ParamsList 转换为 []string
-    strResult := make([]string, len(result))
-    for i, v := range result {
-        strResult[i] = v.(string)
+    // 从结果中提取字段值
+    for _, item := range maps {
+        if v, ok := item[field].(string); ok {
+            values = append(values, v)
+        }
     }
     
-    return strResult, nil
+    return values, nil
 }
 
 // GetAllSymbols 获取所有唯一symbol
