@@ -27,7 +27,7 @@ func (fs *FreezeService) IsFrozen(symbol, strategyName, tradeType string) bool {
 		Filter("strategy_name", strategyName).
 		Filter("trade_type", tradeType).
 		One(&freeze)
-	
+
 	if err != nil {
 		if err == orm.ErrNoRows {
 			return false
@@ -35,7 +35,7 @@ func (fs *FreezeService) IsFrozen(symbol, strategyName, tradeType string) bool {
 		logs.Error("查询冻结状态失败:", err)
 		return false
 	}
-	
+
 	now := time.Now().Unix()
 	return freeze.FreezeUntil > now
 }
@@ -48,7 +48,7 @@ func (fs *FreezeService) GetFreezeConfig(symbol, strategyName, tradeType string)
 		Filter("strategy_name", strategyName).
 		Filter("trade_type", tradeType).
 		One(&freeze)
-	
+
 	if err != nil {
 		if err == orm.ErrNoRows {
 			// 如果不存在，创建默认配置
@@ -56,7 +56,7 @@ func (fs *FreezeService) GetFreezeConfig(symbol, strategyName, tradeType string)
 		}
 		return nil, err
 	}
-	
+
 	return &freeze, nil
 }
 
@@ -74,12 +74,12 @@ func (fs *FreezeService) CreateDefaultFreezeConfig(symbol, strategyName, tradeTy
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
-	
+
 	id, err := fs.orm.Insert(freeze)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	freeze.ID = id
 	return freeze, nil
 }
@@ -90,16 +90,16 @@ func (fs *FreezeService) RecordProfit(symbol, strategyName, tradeType string) er
 	if err != nil {
 		return err
 	}
-	
+
 	freeze.LossCount = 0
 	freeze.UpdatedAt = time.Now().Unix()
-	
+
 	_, err = fs.orm.Update(freeze, "loss_count", "updated_at")
 	if err != nil {
 		logs.Error("更新盈利状态失败:", err)
 		return err
 	}
-	
+
 	logs.Info("策略盈利，清零亏损次数: %s-%s-%s", symbol, strategyName, tradeType)
 	return nil
 }
@@ -110,30 +110,30 @@ func (fs *FreezeService) RecordLoss(symbol, strategyName, tradeType string) erro
 	if err != nil {
 		return err
 	}
-	
+
 	freeze.LossCount++
 	freeze.UpdatedAt = time.Now().Unix()
-	
+
 	// 检查是否达到冻结条件
 	if freeze.LossCount >= freeze.FreezeOnLossCount {
 		// 设置冻结时间
 		freeze.FreezeUntil = time.Now().Add(time.Duration(freeze.FreezeHours) * time.Hour).Unix()
-		logs.Info("策略达到冻结条件，开始冻结: %s-%s-%s, 亏损次数: %d, 冻结至: %d", 
+		logs.Info("策略达到冻结条件，开始冻结: %s-%s-%s, 亏损次数: %d, 冻结至: %d",
 			symbol, strategyName, tradeType, freeze.LossCount, freeze.FreezeUntil)
-		
+
 		_, err = fs.orm.Update(freeze, "loss_count", "freeze_until", "updated_at")
 	} else {
-		logs.Info("策略亏损次数+1: %s-%s-%s, 当前亏损次数: %d/%d", 
+		logs.Info("策略亏损次数+1: %s-%s-%s, 当前亏损次数: %d/%d",
 			symbol, strategyName, tradeType, freeze.LossCount, freeze.FreezeOnLossCount)
-		
+
 		_, err = fs.orm.Update(freeze, "loss_count", "updated_at")
 	}
-	
+
 	if err != nil {
 		logs.Error("更新亏损状态失败:", err)
 		return err
 	}
-	
+
 	return nil
 }
 
@@ -152,20 +152,20 @@ func (fs *FreezeService) UpdateFreezeConfig(freeze *models.StrategyFreeze) error
 func (fs *FreezeService) GetAllFreezeConfigs(page, pageSize int) ([]models.StrategyFreeze, int64, error) {
 	var freezes []models.StrategyFreeze
 	qs := fs.orm.QueryTable("strategy_freeze")
-	
+
 	// 获取总数
 	total, err := qs.Count()
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 分页查询
 	offset := (page - 1) * pageSize
 	_, err = qs.OrderBy("-updated_at").Limit(pageSize, offset).All(&freezes)
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return freezes, total, nil
 }
 
@@ -175,12 +175,12 @@ func (fs *FreezeService) GetRemainingFreezeTime(symbol, strategyName, tradeType 
 	if err != nil {
 		return 0
 	}
-	
+
 	now := time.Now().Unix()
 	if freeze.FreezeUntil > now {
 		return freeze.FreezeUntil - now
 	}
-	
+
 	return 0
 }
 
@@ -190,16 +190,16 @@ func (fs *FreezeService) UnfreezeManually(symbol, strategyName, tradeType string
 	if err != nil {
 		return err
 	}
-	
+
 	freeze.FreezeUntil = 0
 	freeze.UpdatedAt = time.Now().Unix()
-	
+
 	_, err = fs.orm.Update(freeze, "freeze_until", "updated_at")
 	if err != nil {
 		logs.Error("手动解除冻结失败:", err)
 		return err
 	}
-	
+
 	logs.Info("手动解除冻结: %s-%s-%s", symbol, strategyName, tradeType)
 	return nil
 }
@@ -210,33 +210,33 @@ func (fs *FreezeService) ResetLossCount(symbol, strategyName, tradeType string) 
 	if err != nil {
 		return err
 	}
-	
+
 	freeze.LossCount = 0
 	freeze.UpdatedAt = time.Now().Unix()
-	
+
 	_, err = fs.orm.Update(freeze, "loss_count", "updated_at")
 	if err != nil {
 		logs.Error("重置亏损次数失败:", err)
 		return err
 	}
-	
+
 	logs.Info("重置亏损次数: %s-%s-%s", symbol, strategyName, tradeType)
 	return nil
 }
 
 // GetAllSymbols 获取所有唯一symbol
-func (s *FreezeService) GetAllSymbols() ([]string, error) {
-	return s.GetDistinctValues("symbol")
+func (fs *FreezeService) GetAllSymbols() ([]string, error) {
+	return fs.GetDistinctValues("symbol")
 }
 
 // GetAllStrategies 获取所有唯一strategy_name
-func (s *FreezeService) GetAllStrategies() ([]string, error) {
-	return s.GetDistinctValues("strategy_name")
+func (fs *FreezeService) GetAllStrategies() ([]string, error) {
+	return fs.GetDistinctValues("strategy_name")
 }
 
 // GetDistinctValues 用于通用distinct字段
-func (s *FreezeService) GetDistinctValues(field string) ([]string, error) {
+func (fs *FreezeService) GetDistinctValues(field string) ([]string, error) {
 	var result []string
-	_, err := s.DB.QueryTable("strategy_freeze").Distinct().ValuesFlat(&result, field)
+	_, err := fs.orm.QueryTable("strategy_freeze").Distinct().ValuesFlat(&result, field)
 	return result, err
 }
