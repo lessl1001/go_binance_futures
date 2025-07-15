@@ -223,3 +223,20 @@ func (fs *FreezeService) ResetLossCount(symbol, strategyName, tradeType string) 
 	logs.Info("重置亏损次数: %s-%s-%s", symbol, strategyName, tradeType)
 	return nil
 }
+
+// GetAllSymbols 获取所有唯一symbol
+func (s *FreezeService) GetAllSymbols() ([]string, error) {
+	return s.GetDistinctValues("symbol")
+}
+
+// GetAllStrategies 获取所有唯一strategy_name
+func (s *FreezeService) GetAllStrategies() ([]string, error) {
+	return s.GetDistinctValues("strategy_name")
+}
+
+// GetDistinctValues 用于通用distinct字段
+func (s *FreezeService) GetDistinctValues(field string) ([]string, error) {
+	var result []string
+	_, err := s.DB.QueryTable("strategy_freeze").Distinct().ValuesFlat(&result, field)
+	return result, err
+}
