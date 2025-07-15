@@ -237,6 +237,6 @@ func (fs *FreezeService) GetAllStrategies() ([]string, error) {
 // GetDistinctValues 用于通用distinct字段
 func (fs *FreezeService) GetDistinctValues(field string) ([]string, error) {
 	var result orm.ParamsList
-	_, err := fs.orm.QueryTable("strategy_freeze").Distinct().ValuesFlat(&result, field)
+	_, err := fs.orm.QueryTable("strategy_freeze").Distinct().ValuesFlat(field, &result)
 	return result, err
 }
