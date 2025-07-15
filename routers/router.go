@@ -70,6 +70,7 @@ func init() {
 	web.Router("/strategy-freeze/config", &controllers.StrategyFreezeController{}, "get:GetOne") // 获取单个冻结配置
 	web.Router("/strategy-freeze/unfreeze", &controllers.StrategyFreezeController{}, "post:Unfreeze") // 手动解除冻结
 	web.Router("/strategy-freeze/reset-loss", &controllers.StrategyFreezeController{}, "post:ResetLossCount") // 重置亏损次数
+	web.Router("/strategy-freeze/options", &controllers.StrategyFreezeController{}, "get:Options") // 获取选项
 	
 	web.Router("/start", &controllers.CommandController{}, "post:Start") // start
 	web.Router("/stop", &controllers.CommandController{}, "post:Stop") // stop
