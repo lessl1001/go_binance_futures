@@ -260,6 +260,6 @@ func (fs *FreezeService) GetAllStrategies() ([]string, error) {
 }
 
 // 删除
-func (s *FreezeService) DeleteFreezeConfig(id int64) error {
+func (fs *FreezeService) DeleteFreezeConfig(id int64) error {
     return models.DeleteStrategyFreeze(id)
 }
