@@ -69,8 +69,8 @@ func (fs *FreezeService) CreateDefaultFreezeConfig(symbol, strategyName, tradeTy
 		TradeType:         tradeType,
 		FreezeUntil:       0,
 		LossCount:         0,
-		FreezeOnLossCount: 5,  // 默认5次亏损后冻结
-		FreezeHours:       24, // 默认冻结24小时
+		FreezeOnLossCount: 2,  // 默认5次亏损后冻结
+		FreezeHours:       2, // 默认冻结24小时
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
@@ -257,4 +257,8 @@ func (fs *FreezeService) GetAllSymbols() ([]string, error) {
 // GetAllStrategies 获取所有唯一strategy_name
 func (fs *FreezeService) GetAllStrategies() ([]string, error) {
     return fs.GetDistinctValues("strategy_name")
+}
+// 删除
+func (s *FreezeService) DeleteFreezeConfig(id int64) error {
+    return models.DeleteStrategyFreeze(id)
 }
