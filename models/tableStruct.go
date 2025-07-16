@@ -275,3 +275,9 @@ type StrategyFreeze struct {
 func (u *StrategyFreeze) TableName() string {
     return "strategy_freeze"
 }
+// 删除策略冻结配置
+func DeleteStrategyFreeze(id int64) error {
+	o := orm.NewOrm()
+	_, err := o.Delete(&StrategyFreeze{ID: id})
+	return err
+}
