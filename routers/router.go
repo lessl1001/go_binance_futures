@@ -66,7 +66,7 @@ func init() {
 	web.Router("/strategy-templates/test/:symbol", &controllers.StrategyTemplateController{}, "post:TestStrategyRule") // 测试策略规则
 	
 	web.Router("/strategy-freeze", &controllers.StrategyFreezeController{}, "get:Get;post:Post") // 策略冻结配置
-	web.Router("/strategy-freeze/:id", &controllers.StrategyFreezeController{}, "put:Edit") // 更新策略冻结配置
+	web.Router("/strategy-freeze/:id", &controllers.StrategyFreezeController{}, "delete:Delete;put:Edit") // 更新策略冻结配置
 	web.Router("/strategy-freeze/config", &controllers.StrategyFreezeController{}, "get:GetOne") // 获取单个冻结配置
 	web.Router("/strategy-freeze/unfreeze", &controllers.StrategyFreezeController{}, "post:Unfreeze") // 手动解除冻结
 	web.Router("/strategy-freeze/reset-loss", &controllers.StrategyFreezeController{}, "post:ResetLossCount") // 重置亏损次数
