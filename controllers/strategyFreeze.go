@@ -399,3 +399,35 @@ func (c *StrategyFreezeController) Options() {
 	}
 	c.ServeJSON()
 }
+
+// Delete选项
+func (c *StrategyFreezeController) Delete() {
+    idStr := c.Ctx.Input.Param(":id")
+    id, err := strconv.ParseInt(idStr, 10, 64)
+    if err != nil {
+        c.Data["json"] = map[string]interface{}{
+            "code":    400,
+            "message": "无效的ID",
+        }
+        c.ServeJSON()
+        return
+    }
+
+    freezeService := utils.NewFreezeService()
+    err = freezeService.DeleteFreezeConfig(id)
+    if err != nil {
+        c.Data["json"] = map[string]interface{}{
+            "code":    500,
+            "message": "删除失败",
+            "error":   err.Error(),
+        }
+        c.ServeJSON()
+        return
+    }
+
+    c.Data["json"] = map[string]interface{}{
+        "code":    200,
+        "message": "删除成功",
+    }
+    c.ServeJSON()
+}
