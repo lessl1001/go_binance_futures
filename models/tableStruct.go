@@ -278,7 +278,7 @@ func (u *StrategyFreeze) TableName() string {
 
 // 删除策略冻结配置
 func DeleteStrategyFreeze(id int64) error {
-	o := orm.NewOrm()
-	_, err := o.QueryTable(new(StrategyFreeze)).Filter("id", id).Delete()
-	return err
+    o := orm.NewOrm()
+    _, err := o.Raw("DELETE FROM strategy_freeze WHERE id = ?", id).Exec()
+    return err
 }
