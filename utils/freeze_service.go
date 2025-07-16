@@ -258,7 +258,10 @@ func (fs *FreezeService) GetAllSymbols() ([]string, error) {
 func (fs *FreezeService) GetAllStrategies() ([]string, error) {
     return fs.GetDistinctValues("strategy_name")
 }
+
 // 删除
 func (s *FreezeService) DeleteFreezeConfig(id int64) error {
-    return models.DeleteStrategyFreeze(id)
+    o := orm.NewOrm()
+    _, err := o.Raw("DELETE FROM strategy_freeze WHERE id = ?", id).Exec()
+    return err
 }
