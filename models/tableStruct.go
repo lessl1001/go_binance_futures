@@ -1,5 +1,7 @@
 package models
-
+import (
+    "github.com/beego/beego/v2/client/orm"
+)
 type Config struct {
 	ID int64 `orm:"column(id)" json:"id"`
 	Version int64 `orm:"column(version)" json:"version"`
