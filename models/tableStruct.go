@@ -1,7 +1,5 @@
 package models
-import (
-    "github.com/beego/beego/v2/client/orm"
-)
+
 type Config struct {
 	ID int64 `orm:"column(id)" json:"id"`
 	Version int64 `orm:"column(version)" json:"version"`
@@ -276,11 +274,4 @@ type StrategyFreeze struct {
 
 func (u *StrategyFreeze) TableName() string {
     return "strategy_freeze"
-}
-
-// 删除策略冻结配置
-func DeleteStrategyFreeze(id int64) error {
-    o := orm.NewOrm()
-    _, err := o.Raw("DELETE FROM strategy_freeze WHERE id = ?", id).Exec()
-    return err
 }
