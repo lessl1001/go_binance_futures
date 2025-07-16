@@ -261,7 +261,5 @@ func (fs *FreezeService) GetAllStrategies() ([]string, error) {
 
 // 删除
 func (s *FreezeService) DeleteFreezeConfig(id int64) error {
-    o := orm.NewOrm()
-    _, err := o.Raw("DELETE FROM strategy_freeze WHERE id = ?", id).Exec()
-    return err
+    return models.DeleteStrategyFreeze(id)
 }
