@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"go_binance_futures/models"
 	"time"
 
@@ -226,22 +227,18 @@ func (fs *FreezeService) ResetLossCount(symbol, strategyName, tradeType string) 
 
 // GetDistinctValues 用于通用distinct字段
 func (fs *FreezeService) GetDistinctValues(field string) ([]string, error) {
-    // 直接使用 []string 类型
     var values []string
     
-    // 先执行查询获取 QuerySeter
-    qs := fs.orm.QueryTable("strategy_freeze").Distinct()
-    
-    // 使用 Values 方法获取结果
-    var maps []orm.Params
-    _, err := qs.Values(&maps, field)
+    // 使用Raw SQL查询来获取distinct值，这样更可靠
+    var results []orm.Params
+    _, err := fs.orm.Raw(fmt.Sprintf("SELECT DISTINCT %s FROM strategy_freeze WHERE %s != ''", field, field)).Values(&results)
     if err != nil {
         return nil, err
     }
     
     // 从结果中提取字段值
-    for _, item := range maps {
-        if v, ok := item[field].(string); ok {
+    for _, item := range results {
+        if v, ok := item[field].(string); ok && v != "" {
             values = append(values, v)
         }
     }
@@ -251,12 +248,32 @@ func (fs *FreezeService) GetDistinctValues(field string) ([]string, error) {
 
 // GetAllSymbols 获取所有唯一symbol
 func (fs *FreezeService) GetAllSymbols() ([]string, error) {
-    return fs.GetDistinctValues("symbol")
+    symbols, err := fs.GetDistinctValues("symbol")
+    if err != nil {
+        return nil, err
+    }
+    
+    // 如果数据库查询结果为空，返回默认币种
+    if len(symbols) == 0 {
+        return []string{"BTCUSDT", "ETHUSDT", "BNBUSDT"}, nil
+    }
+    
+    return symbols, nil
 }
 
 // GetAllStrategies 获取所有唯一strategy_name
 func (fs *FreezeService) GetAllStrategies() ([]string, error) {
-    return fs.GetDistinctValues("strategy_name")
+    strategies, err := fs.GetDistinctValues("strategy_name")
+    if err != nil {
+        return nil, err
+    }
+    
+    // 如果数据库查询结果为空，返回默认策略
+    if len(strategies) == 0 {
+        return []string{"line3_coin6", "trend_follow"}, nil
+    }
+    
+    return strategies, nil
 }
 
 // 删除
