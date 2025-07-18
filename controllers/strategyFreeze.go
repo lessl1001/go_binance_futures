@@ -15,6 +15,13 @@ type StrategyFreezeController struct {
 	web.Controller
 }
 
+// 请求体结构体，兼容JSON
+type FreezeReq struct {
+	Symbol       string `json:"symbol"`
+	StrategyName string `json:"strategy_name"`
+	TradeType    string `json:"trade_type"`
+}
+
 // 获取冻结配置列表
 func (c *StrategyFreezeController) Get() {
 	page, _ := c.GetInt("page", 1)
@@ -183,12 +190,29 @@ func (c *StrategyFreezeController) Post() {
 	c.ServeJSON()
 }
 
-// 获取单个冻结配置
+// 获取单个冻结配置（兼容query和body）
 func (c *StrategyFreezeController) GetOne() {
-	symbol := c.GetString("symbol")
-	strategyName := c.GetString("strategy_name")
-	tradeType := c.GetString("trade_type")
-	
+	var symbol, strategyName, tradeType string
+	// 优先尝试从body解析
+	var req FreezeReq
+	if len(c.Ctx.Input.RequestBody) > 0 {
+		if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err == nil {
+			symbol = req.Symbol
+			strategyName = req.StrategyName
+			tradeType = req.TradeType
+		}
+	}
+	// 如果body没有，则尝试query
+	if symbol == "" {
+		symbol = c.GetString("symbol")
+	}
+	if strategyName == "" {
+		strategyName = c.GetString("strategy_name")
+	}
+	if tradeType == "" {
+		tradeType = c.GetString("trade_type")
+	}
+
 	if symbol == "" || strategyName == "" || tradeType == "" {
 		c.Data["json"] = map[string]interface{}{
 			"code":    400,
@@ -277,11 +301,26 @@ func (c *StrategyFreezeController) Edit() {
 	c.ServeJSON()
 }
 
-// 手动解除冻结
+// 手动解除冻结（兼容JSON body）
 func (c *StrategyFreezeController) Unfreeze() {
-	symbol := c.GetString("symbol")
-	strategyName := c.GetString("strategy_name")
-	tradeType := c.GetString("trade_type")
+	var symbol, strategyName, tradeType string
+	var req FreezeReq
+	if len(c.Ctx.Input.RequestBody) > 0 {
+		if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err == nil {
+			symbol = req.Symbol
+			strategyName = req.StrategyName
+			tradeType = req.TradeType
+		}
+	}
+	if symbol == "" {
+		symbol = c.GetString("symbol")
+	}
+	if strategyName == "" {
+		strategyName = c.GetString("strategy_name")
+	}
+	if tradeType == "" {
+		tradeType = c.GetString("trade_type")
+	}
 	
 	if symbol == "" || strategyName == "" || tradeType == "" {
 		c.Data["json"] = map[string]interface{}{
@@ -312,11 +351,26 @@ func (c *StrategyFreezeController) Unfreeze() {
 	c.ServeJSON()
 }
 
-// 重置亏损次数
+// 重置亏损次数（兼容JSON body）
 func (c *StrategyFreezeController) ResetLossCount() {
-	symbol := c.GetString("symbol")
-	strategyName := c.GetString("strategy_name")
-	tradeType := c.GetString("trade_type")
+	var symbol, strategyName, tradeType string
+	var req FreezeReq
+	if len(c.Ctx.Input.RequestBody) > 0 {
+		if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err == nil {
+			symbol = req.Symbol
+			strategyName = req.StrategyName
+			tradeType = req.TradeType
+		}
+	}
+	if symbol == "" {
+		symbol = c.GetString("symbol")
+	}
+	if strategyName == "" {
+		strategyName = c.GetString("strategy_name")
+	}
+	if tradeType == "" {
+		tradeType = c.GetString("trade_type")
+	}
 	
 	if symbol == "" || strategyName == "" || tradeType == "" {
 		c.Data["json"] = map[string]interface{}{
@@ -402,32 +456,32 @@ func (c *StrategyFreezeController) Options() {
 
 // Delete选项
 func (c *StrategyFreezeController) Delete() {
-    idStr := c.Ctx.Input.Param(":id")
-    id, err := strconv.ParseInt(idStr, 10, 64)
-    if err != nil {
-        c.Data["json"] = map[string]interface{}{
-            "code":    400,
-            "message": "无效的ID",
-        }
-        c.ServeJSON()
-        return
-    }
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"code":    400,
+			"message": "无效的ID",
+		}
+		c.ServeJSON()
+		return
+	}
 
-    freezeService := utils.NewFreezeService()
-    err = freezeService.DeleteFreezeConfig(id)
-    if err != nil {
-        c.Data["json"] = map[string]interface{}{
-            "code":    500,
-            "message": "删除失败",
-            "error":   err.Error(),
-        }
-        c.ServeJSON()
-        return
-    }
+	freezeService := utils.NewFreezeService()
+	err = freezeService.DeleteFreezeConfig(id)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"code":    500,
+			"message": "删除失败",
+			"error":   err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
 
-    c.Data["json"] = map[string]interface{}{
-        "code":    200,
-        "message": "删除成功",
-    }
-    c.ServeJSON()
+	c.Data["json"] = map[string]interface{}{
+		"code":    200,
+		"message": "删除成功",
+	}
+	c.ServeJSON()
 }
